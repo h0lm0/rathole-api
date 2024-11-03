@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.config['BASIC_AUTH_USERNAME'] = os.getenv('RAT_API_USERNAME')
 app.config['BASIC_AUTH_PASSWORD'] = os.getenv('RAT_API_PASSWORD')
 
-RAT_FILE = os.getenv("RAT_FILE_PATH")  # Default path if not set
+RAT_FILE = os.getenv("RAT_FILE_PATH")
 
 basic_auth = BasicAuth(app)
 
