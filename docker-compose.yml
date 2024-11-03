@@ -19,5 +19,6 @@ services:
       FLASK_APP: app.py
     networks:
       ctfd:
+      
 networks:
   ctfd:
