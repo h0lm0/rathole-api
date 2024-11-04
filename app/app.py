@@ -9,6 +9,7 @@ app = Flask(__name__)
 app.config['BASIC_AUTH_USERNAME'] = os.getenv('RAT_API_USERNAME')
 app.config['BASIC_AUTH_PASSWORD'] = os.getenv('RAT_API_PASSWORD')
 
+RAT_MODE = os.getenv("RAT_MODE")
 RAT_FILE = os.getenv("RAT_FILE_PATH")
 
 basic_auth = BasicAuth(app)
@@ -33,16 +34,27 @@ def start_tunnel():
     except ValueError:
         return jsonify({"error": "Les ports doivent être des nombres entiers."}), 400
 
-    try:
-        config = toml.load(RAT_FILE) if os.path.exists(RAT_FILE) else {"client": {"services": {}}}
-    except toml.TomlDecodeError as e:
-        return jsonify({"error": f"Erreur lors de la lecture du fichier de configuration : {e}"}), 500
+    if (RAT_MODE == "client"):
+        try:
+            config = toml.load(RAT_FILE) if os.path.exists(RAT_FILE) else {"client": {"services": {}}}
+        except toml.TomlDecodeError as e:
+            return jsonify({"error": f"Erreur lors de la lecture du fichier de configuration : {e}"}), 500
 
-    config["client"]["services"][container_id] = {
-        "type": "tcp",
-        "local_addr": f"0.0.0.0:{container_port}"
-    }
+        config["client"]["services"][container_id] = {
+            "type": "tcp",
+            "local_addr": f"0.0.0.0:{container_port}"
+        }
+    elif (RAT_MODE == "server"):
+        try:
+            config = toml.load(RAT_FILE) if os.path.exists(RAT_FILE) else {"server": {"services": {}}}
+        except toml.TomlDecodeError as e:
+            return jsonify({"error": f"Erreur lors de la lecture du fichier de configuration : {e}"}), 500
 
+        config["server"]["services"][container_id] = {
+            "bind_addr": f"0.0.0.0:{container_port}"
+        }
+    else:
+        return jsonify({"error": f"Erreur lors de l'écriture dans le fichier de configuration : RAT_MODE unrecognized"}), 500
     # Écriture dans le fichier
     try:
         with open(RAT_FILE, "w") as f:
@@ -68,18 +80,34 @@ def stop_tunnel():
     except toml.TomlDecodeError as e:
         return jsonify({"error": f"Erreur lors de la lecture du fichier de configuration : {e}"}), 500
 
-    if "services" in config["client"] and container_id in config["client"]["services"]:
-        del config["client"]["services"][container_id]
+    if (RAT_MODE == "client"):
+        if "services" in config["client"] and container_id in config["client"]["services"]:
+            del config["client"]["services"][container_id]
 
-        try:
-            with open(RAT_FILE, "w") as f:
-                toml.dump(config, f)
-        except IOError as e:
-            return jsonify({"error": f"Erreur lors de la modification du fichier de configuration : {e}"}), 500
+            try:
+                with open(RAT_FILE, "w") as f:
+                    toml.dump(config, f)
+            except IOError as e:
+                return jsonify({"error": f"Erreur lors de la modification du fichier de configuration : {e}"}), 500
 
-        return jsonify({"status": "Tunnel stopped"}), 200
+            return jsonify({"status": "Tunnel stopped"}), 200
+        else:
+            return jsonify({"error": "Aucun tunnel trouvé avec ce nom."}), 404
+    elif (RAT_MODE == "server"):
+        if "services" in config["server"] and container_id in config["server"]["services"]:
+            del config["server"]["services"][container_id]
+
+            try:
+                with open(RAT_FILE, "w") as f:
+                    toml.dump(config, f)
+            except IOError as e:
+                return jsonify({"error": f"Erreur lors de la modification du fichier de configuration : {e}"}), 500
+
+            return jsonify({"status": "Tunnel stopped"}), 200
+        else:
+            return jsonify({"error": "Aucun tunnel trouvé avec ce nom."}), 404
     else:
-        return jsonify({"error": "Aucun tunnel trouvé avec ce nom."}), 404
+        return jsonify({"error": f"Erreur lors de l'écriture dans le fichier de configuration : RAT_MODE unrecognized"}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

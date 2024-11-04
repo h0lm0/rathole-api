@@ -15,6 +15,7 @@ services:
       RAT_API_USERNAME: $RAT_API_USERNAME
       RAT_API_PASSWORD: $RAT_API_PASSWORD
       RAT_FILE_PATH: $RAT_FILE_PATH
+      RAT_MODE: $RAT_MODE
       FLASK_ENV: production
       FLASK_APP: app.py
     networks:
